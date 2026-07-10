@@ -4,6 +4,14 @@ import tty
 import termios
 import json
 
+def is_interactive_tty():
+    import os
+    try:
+        # Check if stdin is a tty and AGENT_MODE is not set
+        return sys.stdin.isatty() and os.environ.get("AGENT_MODE") != "1"
+    except Exception:
+        return False
+
 def get_key():
     fd = sys.stdin.fileno()
     old_settings = termios.tcgetattr(fd)
@@ -20,6 +28,23 @@ def get_key():
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
 
 def select_menu(title, options):
+    if not is_interactive_tty():
+        print(f"\n{title}")
+        for idx, opt in enumerate(options):
+            print(f"  {idx + 1}. {opt}")
+        while True:
+            sys.stdout.write("Selection: ")
+            sys.stdout.flush()
+            val = sys.stdin.readline().strip()
+            if val.isdigit():
+                selected = int(val) - 1
+                if 0 <= selected < len(options):
+                    return selected
+            for idx, opt in enumerate(options):
+                if opt.lower() == val.lower():
+                    return idx
+            print("Invalid selection. Please try again.")
+
     selected_index = 0
     num_options = len(options)
     

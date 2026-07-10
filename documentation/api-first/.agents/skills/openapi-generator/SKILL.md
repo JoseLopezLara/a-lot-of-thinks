@@ -19,15 +19,15 @@ This skill enables the agent to take an API contract (in any format, e.g. JSON, 
 
 ## Procedure
 
-### Step 1: Run the Interactive Selector Script
-1. Run the interactive terminal selection script:
-   `python3 .agents/skills/openapi-generator/scripts/interactive_prompts.py`
+### Step 1: Run the Selector Script in Agent Mode
+1. Run the terminal selection script with `AGENT_MODE=1` environment variable set:
+   `AGENT_MODE=1 python3 .agents/skills/openapi-generator/scripts/interactive_prompts.py`
    using the `run_command` tool.
-2. Since this script is interactive, it will prompt the user directly in the terminal with arrow keys to choose:
-   - Target API version (existing version or new version).
-   - Target Domain (existing directory or new directory).
-   - Endpoint filename (e.g. `get-users`).
-   - Route code generation option (`simulated`, `empty`, or `none`).
+2. Because the script runs as a background task, the agent acts as an interactive bridge:
+   - Periodically check the task log file (using `view_file`) to see what options the script is waiting for.
+   - Use the `ask_question` tool to present the options to the user.
+   - Send the user's selection back to the background task using `manage_task` with action `send_input` (ensuring to append a newline `\n` to the input).
+   - Repeat this for each interactive menu and text prompt (API version selection, domain selection, endpoint filename, and route type).
 3. Once the script finishes, it creates the directory structure and saves a JSON config file at `.agents/skills/openapi-generator/scratch/config.json`.
 
 ### Step 2: Read the Selection Metadata
