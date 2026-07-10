@@ -22,5 +22,6 @@ COPY . .
 EXPOSE 8000
 
 # Start Uvicorn development server with hot-reload enabled for code and specs
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "app", "--reload-dir", "openapi"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "app", "--reload-dir", "routes", "--reload-dir", "openapi"]
+
 

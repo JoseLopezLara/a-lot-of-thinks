@@ -16,13 +16,18 @@ def merge_dicts(dict1: Dict[str, Any], dict2: Dict[str, Any]) -> Dict[str, Any]:
 def load_combined_openapi(openapi_dir: str) -> Dict[str, Any]:
     """
     Loads openapi/main.yaml and merges all other yaml/yml files under openapi_dir.
+    Expands environment variables (like ${API_PORT}) inside the spec.
     """
     main_path = os.path.join(openapi_dir, "main.yaml")
     if not os.path.exists(main_path):
         raise FileNotFoundError(f"Main OpenAPI entrypoint not found at {main_path}")
         
     with open(main_path, "r", encoding="utf-8") as f:
-        spec = yaml.safe_load(f) or {}
+        content = f.read()
+    
+    # Dynamically expand environment variables
+    expanded_content = os.path.expandvars(content)
+    spec = yaml.safe_load(expanded_content) or {}
 
     # Ensure base keys exist
     if "paths" not in spec:
@@ -36,7 +41,10 @@ def load_combined_openapi(openapi_dir: str) -> Dict[str, Any]:
             if file.endswith((".yaml", ".yml")) and file != "main.yaml":
                 full_path = os.path.join(root, file)
                 with open(full_path, "r", encoding="utf-8") as f:
-                    domain_spec = yaml.safe_load(f) or {}
+                    content = f.read()
+                
+                expanded_content = os.path.expandvars(content)
+                domain_spec = yaml.safe_load(expanded_content) or {}
                 
                 # Merge paths
                 if "paths" in domain_spec and domain_spec["paths"]:
