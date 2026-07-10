@@ -71,7 +71,7 @@ def text_input(prompt):
 def main():
     # Detect api-first root dir
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    root_dir = os.path.abspath(os.path.join(script_dir, "..", "..", ".."))
+    root_dir = os.path.abspath(os.path.join(script_dir, "..", "..", "..", ".."))
     openapi_dir = os.path.join(root_dir, "openapi")
     
     if not os.path.exists(openapi_dir):
