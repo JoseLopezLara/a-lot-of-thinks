@@ -1,0 +1,60 @@
+# ==============================================================================
+# DOMAIN: System
+# Description: System diagnostic and health check endpoints.
+# ==============================================================================
+
+paths:
+  /health:
+    get:
+      tags:
+        - System
+      summary: Diagnóstico y monitoreo de salud del sistema
+      description: |
+        Endpoint de diagnóstico y monitoreo diseñado para validar la salud general del sistema. Es consumido principalmente por los pipelines de CI/CD (GitHub Actions) para confirmar que el despliegue fue exitoso o disparar un rollback automático en caso de fallo.
+
+        **Lambda asociada**: `system_health_lambda`
+      responses:
+        '200':
+          description: El servicio está operativo y listo para recibir tráfico.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '500':
+          description: Fallo crítico en el sistema (ej. error de sintaxis en el código desplegado, fallo de inicialización en la función Lambda).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthErrorResponse'
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - timestamp
+      properties:
+        status:
+          type: string
+          description: Estado general del sistema.
+          example: "ok"
+        timestamp:
+          type: string
+          format: date-time
+          description: Marca de tiempo en formato ISO 8601 que indica cuándo se realizó la verificación.
+          example: "2026-07-08T07:05:00Z"
+    HealthErrorResponse:
+      type: object
+      required:
+        - status
+        - message
+      properties:
+        status:
+          type: string
+          description: Identificador de estado indicando que ocurrió un error.
+          example: "error"
+        message:
+          type: string
+          description: Mensaje descriptivo del error crítico del servidor.
+          example: "Internal server error"
