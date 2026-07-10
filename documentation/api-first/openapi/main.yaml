@@ -1,0 +1,11 @@
+openapi: 3.0.3
+info:
+  title: "Sandbox Domain-Driven API Spec"
+  description: "A temporary sandbox FastAPI application loaded dynamically from modular, domain-grouped OpenAPI YAML files."
+  version: "1.0.0"
+servers:
+  - url: http://localhost:8102
+    description: Local development server
+paths: {}
+components:
+  schemas: {}

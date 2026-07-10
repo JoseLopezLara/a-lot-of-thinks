@@ -21,5 +21,6 @@ COPY . .
 # Expose FastAPI's default port
 EXPOSE 8000
 
-# Start Uvicorn development server with hot-reload enabled
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# Start Uvicorn development server with hot-reload enabled for code and specs
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "app", "--reload-dir", "openapi"]
+

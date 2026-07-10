@@ -9,11 +9,18 @@ A temporary sandbox environment designed to verify that interactive Swagger UI a
 ```text
 api-first/
 ├── app/
-│   └── main.py              # FastAPI main application & endpoints
+│   ├── main.py              # FastAPI main application & endpoints
+│   └── openapi_loader.py    # Merges openapi/*.yaml files dynamically
+├── openapi/
+│   ├── main.yaml            # OpenAPI root entrypoint (info, servers)
+│   ├── auth/
+│   │   └── google-auth.yaml # Authentication domain specification
+│   └── external/
+│       └── mock-api.yaml    # External APIs verification domain
 ├── .env                     # Environment configuration (defines API_PORT)
-├── Dockerfile               # Production-ready slim Docker environment
+├── Dockerfile               # Production-ready slim Docker environment with watch dirs
 ├── docker-compose.yml       # Docker Compose config with live-reload mounting
-├── requirements.txt         # Project package dependencies
+├── requirements.txt         # Project package dependencies with PyYAML
 └── README.md                # Documentation & usage instructions
 ```
 
@@ -33,6 +40,42 @@ You can customize the host port exposed by the application using the `.env` file
 ```env
 API_PORT=8102
 ```
+
+---
+
+## Domain-Driven OpenAPI Architecture
+
+This project is structured for scalable API development where each domain contains its own declarative OpenAPI YAML specification:
+
+* **`openapi/main.yaml`**: The entrypoint defining metadata, versioning, servers, and global configurations.
+* **Domain Subfolders (e.g., `openapi/auth/`, `openapi/external/`)**: Put domain-specific YAML specifications inside separate subdirectories (e.g. `user/`, `billing/`).
+
+### How It Works:
+1. At startup, [app/openapi_loader.py](file:///home/jose-lopez-lara/Git/a-lot-of-thinks/documentation/api-first/app/openapi_loader.py) walks through the `openapi/` directory.
+2. It loads `main.yaml` and recursively merges `paths` and `components` from all sub-YAML files into a single, combined OpenAPI schema dictionary.
+3. FastAPI overrides its auto-generated `/docs` schema with this dictionary.
+4. During local development, editing any `.yaml` file inside the `openapi/` folder will trigger Uvicorn to hot-reload, refreshing the Swagger UI immediately.
+
+### Adding a New Domain API:
+1. Create a new directory under `openapi/`, e.g., `openapi/payments/`.
+2. Add a new `.yaml` file (e.g., `openapi/payments/checkout.yaml`) defining routes and components:
+   ```yaml
+   paths:
+     /checkout:
+       post:
+         tags:
+           - Payments
+         summary: Process checkout
+         responses:
+           '200':
+             description: Checkout success
+   ```
+3. Implement the corresponding endpoint in Python inside [app/main.py](file:///home/jose-lopez-lara/Git/a-lot-of-thinks/documentation/api-first/app/main.py):
+   ```python
+   @app.post("/checkout")
+   async def checkout():
+       return {"status": "processed"}
+   ```
 
 ---
 

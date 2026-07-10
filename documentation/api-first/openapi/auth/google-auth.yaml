@@ -1,0 +1,44 @@
+paths:
+  /mock-google-auth:
+    post:
+      tags:
+        - Authentication
+      summary: Mock Google Authentication
+      description: Validates mock request body token and client_id parameters.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoogleAuthRequest'
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  authenticated:
+                    type: boolean
+                  message:
+                    type: string
+                  received_payload:
+                    type: object
+
+components:
+  schemas:
+    GoogleAuthRequest:
+      type: object
+      required:
+        - token
+        - client_id
+      properties:
+        token:
+          type: string
+          description: Mock OAuth2 token from client identity provider.
+          example: "ya29.a0AfB_byE_mock_token_1234567890"
+        client_id:
+          type: string
+          description: OAuth2 client ID.
+          example: "1234567890-mockclientid.apps.googleusercontent.com"
