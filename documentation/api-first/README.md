@@ -119,8 +119,9 @@ Use this skill when you want to create a new endpoint. Just provide the API cont
 #### How to use:
 1. Start the `agy` CLI or use the chat interface.
 2. Provide your API contract or endpoint description to the agent (e.g. *"Generate a GET /users endpoint that returns a list of users..."*).
-3. The agent will detect and execute the `openapi-generator` skill. It will interactively prompt you for:
-   - **API Version** (if not specified in your input).
-   - **Domain / Directory** (by listing existing domains or letting you create a new one).
-   - **Route Code Generation** (whether you want simulated mock responses, an empty skeleton route, or no Python file at all).
-4. The agent will then generate the corresponding OpenAPI YAML specification and FastAPI Python route handler in the correct directories under `openapi/` and `routes/`.
+3. The agent will run the interactive helper script directly in your terminal. You can use the **Up/Down arrow keys** and **Enter** to select:
+   - **API Version** (choosing an existing version or typing a new one).
+   - **Domain / Directory** (displaying existing folders or typing a new one).
+   - **Endpoint name** (filename for the `.yaml` and `.py` files).
+   - **Route Code Generation** (whether you want simulated mock responses, an empty skeleton route, or no Python file).
+4. The agent will read these selections and generate the corresponding OpenAPI YAML specification and FastAPI Python route handler in the correct directories under `openapi/` and `routes/` using best practices.
