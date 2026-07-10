@@ -1,0 +1,88 @@
+paths:
+  /users/me/profile:
+    get:
+      tags:
+        - Users
+      summary: Recupera el perfil del usuario autenticado
+      description: |
+        Recupera los datos del perfil del usuario extraído del claim del token JWT de Cognito.
+
+        **Lambda asociada**: `users_standard_lambda`
+      security:
+        - CognitoAuth: []
+      responses:
+        '200':
+          description: Perfil de usuario recuperado exitosamente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileResponse'
+        '401':
+          description: El token provisto es inválido, expiró o no existe.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '404':
+          description: El perfil de usuario no se encuentra en la base de datos.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+
+components:
+  securitySchemes:
+    CognitoAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT provisto por AWS Cognito.
+  schemas:
+    UserProfileResponse:
+      type: object
+      required:
+        - user_id
+        - name
+        - email
+      properties:
+        user_id:
+          type: string
+          description: Identificador único del usuario extraído de Cognito.
+          example: "google-oauth2|123456789"
+        name:
+          type: string
+          description: Nombre completo del usuario.
+          example: "Jose Lopez Lara"
+        email:
+          type: string
+          format: email
+          description: Dirección de correo electrónico del usuario.
+          example: "jose.lopez@example.com"
+        avatar_url:
+          type: string
+          format: uri
+          description: URL a la imagen de avatar del usuario.
+          example: "https://avatar.example.com/jose.png"
+    UnauthorizedError:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          description: Mensaje descriptivo del error de autenticación.
+          example: "Unauthorized"
+    NotFoundError:
+      type: object
+      required:
+        - status
+        - message
+      properties:
+        status:
+          type: string
+          description: Identificador de estado indicando que ocurrió un error (error).
+          example: "error"
+        message:
+          type: string
+          description: Mensaje explicando la razón del error.
+          example: "User profile not found."

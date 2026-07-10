@@ -19,15 +19,26 @@ This skill enables the agent to take an API contract (in any format, e.g. JSON, 
 
 ## Procedure
 
-### Step 1: Run the Selector Script in Agent Mode
+### Step 1: Run the Selector Script (Prefer Non-Interactive CLI Arguments)
+You can run the script in either non-interactive or interactive mode:
+
+#### Option A: Non-Interactive Mode (Preferred)
+If you already know the version, domain, endpoint name, and route generation options from the user request:
+1. Run the script passing CLI arguments:
+   `python3 .agents/skills/openapi-generator/scripts/interactive_prompts.py --version {version} --domain {domain} --endpoint {endpoint_name} --route-type {route_type}`
+   using the `run_command` tool.
+   *Example*: `python3 .agents/skills/openapi-generator/scripts/interactive_prompts.py --version v1 --domain users --endpoint get-users-me-ideas --route-type simulated`
+2. This runs completely silently and instantly generates `.agents/skills/openapi-generator/scratch/config.json` without asking the user for any confirmations or inputs.
+
+#### Option B: Interactive Fallback
+If the target details are not clear:
 1. Run the terminal selection script with `AGENT_MODE=1` environment variable set:
    `AGENT_MODE=1 python3 .agents/skills/openapi-generator/scripts/interactive_prompts.py`
    using the `run_command` tool.
-2. Because the script runs as a background task, the agent acts as an interactive bridge:
+2. The agent acts as an interactive bridge:
    - Periodically check the task log file (using `view_file`) to see what options the script is waiting for.
    - Use the `ask_question` tool to present the options to the user.
    - Send the user's selection back to the background task using `manage_task` with action `send_input` (ensuring to append a newline `\n` to the input).
-   - Repeat this for each interactive menu and text prompt (API version selection, domain selection, endpoint filename, and route type).
 3. Once the script finishes, it creates the directory structure and saves a JSON config file at `.agents/skills/openapi-generator/scratch/config.json`.
 
 ### Step 2: Read the Selection Metadata

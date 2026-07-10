@@ -94,6 +94,15 @@ def text_input(prompt):
     return val
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser(description="Configure selections for the openapi-generator.")
+    parser.add_argument("--version", type=str, help="API version, e.g., v1")
+    parser.add_argument("--domain", type=str, help="API domain, e.g., users")
+    parser.add_argument("--endpoint", type=str, help="Endpoint filename, e.g., get-users")
+    parser.add_argument("--route-type", type=str, choices=["simulated", "empty", "none"], help="Route generation option")
+    
+    args = parser.parse_args()
+
     # Detect api-first root dir
     script_dir = os.path.dirname(os.path.abspath(__file__))
     root_dir = os.path.abspath(os.path.join(script_dir, "..", "..", "..", ".."))
@@ -103,61 +112,76 @@ def main():
         print(f"Error: Could not find 'openapi' directory at {openapi_dir}", file=sys.stderr)
         sys.exit(1)
 
-    # 1. API Version selection
-    existing_versions = []
-    if os.path.exists(openapi_dir):
-        existing_versions = [
-            d for d in os.listdir(openapi_dir)
-            if os.path.isdir(os.path.join(openapi_dir, d)) and d.startswith("v")
-        ]
-    existing_versions.sort()
-
-    version_options = existing_versions + ["Create a new version..."]
-    v_idx = select_menu("Select the target API version:", version_options)
-    
-    if version_options[v_idx] == "Create a new version...":
-        version = text_input("Enter new version name (e.g. v2): ").strip().lower()
+    # Check if all arguments are provided to bypass interaction
+    if args.version and args.domain and args.endpoint and args.route_type:
+        version = args.version.lower()
         if not version.startswith("v"):
             version = "v" + version
+        domain = args.domain.lower()
+        endpoint = args.endpoint.lower()
+        if endpoint.endswith(".yaml") or endpoint.endswith(".yml"):
+            endpoint = endpoint.split(".")[0]
+        route_type = args.route_type.lower()
+        
+        # Ensure version directories exist
+        v_openapi_path = os.path.join(openapi_dir, version)
+        os.makedirs(v_openapi_path, exist_ok=True)
     else:
-        version = version_options[v_idx]
+        # 1. API Version selection
+        existing_versions = []
+        if os.path.exists(openapi_dir):
+            existing_versions = [
+                d for d in os.listdir(openapi_dir)
+                if os.path.isdir(os.path.join(openapi_dir, d)) and d.startswith("v")
+            ]
+        existing_versions.sort()
 
-    # Ensure version directories exist
-    v_openapi_path = os.path.join(openapi_dir, version)
-    os.makedirs(v_openapi_path, exist_ok=True)
+        version_options = existing_versions + ["Create a new version..."]
+        v_idx = select_menu("Select the target API version:", version_options)
+        
+        if version_options[v_idx] == "Create a new version...":
+            version = text_input("Enter new version name (e.g. v2): ").strip().lower()
+            if not version.startswith("v"):
+                version = "v" + version
+        else:
+            version = version_options[v_idx]
 
-    # 2. Domain selection
-    existing_domains = []
-    if os.path.exists(v_openapi_path):
-        existing_domains = [
-            d for d in os.listdir(v_openapi_path)
-            if os.path.isdir(os.path.join(v_openapi_path, d))
+        # Ensure version directories exist
+        v_openapi_path = os.path.join(openapi_dir, version)
+        os.makedirs(v_openapi_path, exist_ok=True)
+
+        # 2. Domain selection
+        existing_domains = []
+        if os.path.exists(v_openapi_path):
+            existing_domains = [
+                d for d in os.listdir(v_openapi_path)
+                if os.path.isdir(os.path.join(v_openapi_path, d))
+            ]
+        existing_domains.sort()
+
+        domain_options = existing_domains + ["Create a new domain..."]
+        d_idx = select_menu(f"Select the target Domain (in {version}):", domain_options)
+        
+        if domain_options[d_idx] == "Create a new domain...":
+            domain = text_input("Enter new domain name (e.g. users): ").strip().lower()
+        else:
+            domain = domain_options[d_idx]
+
+        # 3. Endpoint name
+        endpoint = text_input("Enter endpoint filename (e.g. get-users): ").strip().lower()
+        if endpoint.endswith(".yaml") or endpoint.endswith(".yml"):
+            endpoint = endpoint.split(".")[0]
+
+        # 4. Route type
+        route_options = [
+            "Simulated (FastAPI route with mock data)",
+            "Empty (FastAPI route skeleton)",
+            "None (only OpenAPI YAML spec)"
         ]
-    existing_domains.sort()
-
-    domain_options = existing_domains + ["Create a new domain..."]
-    d_idx = select_menu(f"Select the target Domain (in {version}):", domain_options)
-    
-    if domain_options[d_idx] == "Create a new domain...":
-        domain = text_input("Enter new domain name (e.g. users): ").strip().lower()
-    else:
-        domain = domain_options[d_idx]
-
-    # 3. Endpoint name
-    endpoint = text_input("Enter endpoint filename (e.g. get-users): ").strip().lower()
-    if endpoint.endswith(".yaml") or endpoint.endswith(".yml"):
-        endpoint = endpoint.split(".")[0]
-
-    # 4. Route type
-    route_options = [
-        "Simulated (FastAPI route with mock data)",
-        "Empty (FastAPI route skeleton)",
-        "None (only OpenAPI YAML spec)"
-    ]
-    r_idx = select_menu("Select Route Code Generation option:", route_options)
-    
-    route_types = ["simulated", "empty", "none"]
-    route_type = route_types[r_idx]
+        r_idx = select_menu("Select Route Code Generation option:", route_options)
+        
+        route_types = ["simulated", "empty", "none"]
+        route_type = route_types[r_idx]
 
     result = {
         "version": version,
