@@ -208,6 +208,14 @@ def main():
     with open(config_path, "w") as f:
         json.dump(result, f, indent=2)
 
+    # Touch app/main.py to trigger Uvicorn hot-reload
+    main_py_path = os.path.join(root_dir, "app", "main.py")
+    if os.path.exists(main_py_path):
+        try:
+            os.utime(main_py_path, None)
+        except Exception as e:
+            print(f"Warning: Could not touch app/main.py: {e}", file=sys.stderr)
+
     # Print results to stdout
     print("\n--- SELECTIONS ---")
     print(f"Version:      {version}")

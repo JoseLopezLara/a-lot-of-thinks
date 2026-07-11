@@ -1,3 +1,4 @@
+# Trigger Uvicorn hot-reload to register newly created version directories
 import os
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi

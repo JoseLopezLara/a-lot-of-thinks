@@ -72,6 +72,7 @@ Once the user submits the selections:
    * Ensure correct inputs, imports, and output structure.
 
 ### Step 6: Verification & Confirmation
-1. Run syntax validation using `python3 -m py_compile` on the newly generated Python file to ensure it compiles correctly.
-2. Inform the user of the successfully created files and show their paths.
-3. Clean up the configuration file `.agents/skills/openapi-generator/scratch/config.json`.
+1. Run syntax validation using `python3 -m py_compile` on the newly generated Python file to ensure it compiles correctly (if one was generated).
+2. Touch/update the Gateway entrypoint `app/main.py` using `run_command` (e.g. `touch app/main.py`) to force Uvicorn to reload the configuration and mount the new specs/routes.
+3. Inform the user of the successfully created files and show their paths.
+4. Clean up the configuration file `.agents/skills/openapi-generator/scratch/config.json`.
