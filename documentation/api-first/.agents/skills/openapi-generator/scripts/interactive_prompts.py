@@ -100,6 +100,7 @@ def main():
     parser.add_argument("--domain", type=str, help="API domain, e.g., users")
     parser.add_argument("--endpoint", type=str, help="Endpoint filename, e.g., get-users")
     parser.add_argument("--route-type", type=str, choices=["simulated", "empty", "none"], help="Route generation option")
+    parser.add_argument("--language", type=str, choices=["spanish", "english"], help="Language for generated documentation and mocks")
     
     args = parser.parse_args()
 
@@ -112,7 +113,7 @@ def main():
         print(f"Error: Could not find 'openapi' directory at {openapi_dir}", file=sys.stderr)
         sys.exit(1)
 
-    # Check if all arguments are provided to bypass interaction
+    # Check if all core arguments are provided to bypass interaction
     if args.version and args.domain and args.endpoint and args.route_type:
         version = args.version.lower()
         if not version.startswith("v"):
@@ -122,6 +123,7 @@ def main():
         if endpoint.endswith(".yaml") or endpoint.endswith(".yml"):
             endpoint = endpoint.split(".")[0]
         route_type = args.route_type.lower()
+        language = args.language.lower() if args.language else "english"
         
         # Ensure version directories exist
         v_openapi_path = os.path.join(openapi_dir, version)
@@ -183,11 +185,20 @@ def main():
         route_types = ["simulated", "empty", "none"]
         route_type = route_types[r_idx]
 
+        # 5. Language
+        language_options = [
+            "Spanish (Español)",
+            "English (Inglés)"
+        ]
+        lang_idx = select_menu("Select target language for documentation & mocks:", language_options)
+        language = "spanish" if lang_idx == 0 else "english"
+
     result = {
         "version": version,
         "domain": domain,
         "endpoint_name": endpoint,
-        "route_type": route_type
+        "route_type": route_type,
+        "language": language
     }
 
     # Save to a scratch configuration file
@@ -203,6 +214,7 @@ def main():
     print(f"Domain:       {domain}")
     print(f"Endpoint:     {endpoint}")
     print(f"Route Type:   {route_type}")
+    print(f"Language:     {language}")
     print(f"Config Saved: {config_path}")
     print("------------------\n")
 
