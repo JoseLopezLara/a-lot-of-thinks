@@ -23,7 +23,7 @@ paths:
           schema:
             type: string
             format: uuid
-            example: "uuid-1234-5678"
+            example: "d3b07384-d113-4956-a5db-9c2980fa2a4f"
       responses:
         '200':
           description: Payload absoluto de la idea detallada, segmentando la propuesta original del usuario de la evaluación formal de la inteligencia artificial.
@@ -240,12 +240,12 @@ components:
           type: string
           format: uri
           description: URL de intención preformateada para compartir la idea aprobada en X/Twitter.
-          example: "https://twitter.com/intent/tweet?text=El%20Juez%20IA%20acaba%20de%20aprobar%20mi%20arquitectura...&url=https://dev.midominio.com/idea/uuid-1234-5678"
+          example: "https://twitter.com/intent/tweet?text=El%20Juez%20IA%20acaba%20de%20aprobar%20mi%20arquitectura...&url=https://dev.midominio.com/idea/d3b07384-d113-4956-a5db-9c2980fa2a4f"
         linkedin_share_url:
           type: string
           format: uri
           description: URL de intención preformateada para compartir la idea aprobada en LinkedIn.
-          example: "https://www.linkedin.com/sharing/share-offsite/?url=https://dev.midominio.com/idea/uuid-1234-5678"
+          example: "https://www.linkedin.com/sharing/share-offsite/?url=https://dev.midominio.com/idea/d3b07384-d113-4956-a5db-9c2980fa2a4f"
 
     IdeaLinks:
       type: object
@@ -277,7 +277,7 @@ components:
           type: string
           format: uuid
           description: Identificador único (UUID) de la idea consultada.
-          example: "uuid-1234-5678"
+          example: "d3b07384-d113-4956-a5db-9c2980fa2a4f"
         pitch:
           $ref: '#/components/schemas/IdeaPitch'
         author_profile:

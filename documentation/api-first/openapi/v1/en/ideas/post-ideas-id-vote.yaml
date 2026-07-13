@@ -24,7 +24,7 @@ paths:
           schema:
             type: string
             format: uuid
-            example: "uuid-1234-5678"
+            example: "d3b07384-d113-4956-a5db-9c2980fa2a4f"
       requestBody:
         required: true
         content:
@@ -132,7 +132,7 @@ components:
           type: string
           format: uuid
           description: El identificador de la idea afectada, útil para confirmación en el estado global del frontend.
-          example: "uuid-1234-5678"
+          example: "d3b07384-d113-4956-a5db-9c2980fa2a4f"
         action_applied:
           $ref: '#/components/schemas/VoteAction'
         metrics:

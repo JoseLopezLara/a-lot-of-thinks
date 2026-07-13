@@ -75,8 +75,8 @@ class IdeaDetailNotFoundResponse(BaseModel):
 
 # In-memory mock database
 MOCK_IDEA_DETAILS = {
-    "uuid-1234-5678": {
-        "id": "uuid-1234-5678",
+    "d3b07384-d113-4956-a5db-9c2980fa2a4f": {
+        "id": "d3b07384-d113-4956-a5db-9c2980fa2a4f",
         "pitch": {
             "title": "NeonPath",
             "one_liner": "A serverless IDE built directly into Discord channels.",
@@ -122,8 +122,8 @@ MOCK_IDEA_DETAILS = {
         "links": {
             "discord_thread_url": "https://discord.com/channels/123/456",
             "social_sharing": {
-                "x_intent_url": "https://twitter.com/intent/tweet?text=El%20Juez%20IA%20acaba%20de%20aprobar%20mi%20arquitectura...&url=https://dev.midominio.com/idea/uuid-1234-5678",
-                "linkedin_share_url": "https://www.linkedin.com/sharing/share-offsite/?url=https://dev.midominio.com/idea/uuid-1234-5678"
+                "x_intent_url": "https://twitter.com/intent/tweet?text=El%20Juez%20IA%20acaba%20de%20aprobar%20mi%20arquitectura...&url=https://dev.midominio.com/idea/d3b07384-d113-4956-a5db-9c2980fa2a4f",
+                "linkedin_share_url": "https://www.linkedin.com/sharing/share-offsite/?url=https://dev.midominio.com/idea/d3b07384-d113-4956-a5db-9c2980fa2a4f"
             }
         },
         "created_at": "2026-07-07T10:00:00Z"
@@ -131,8 +131,6 @@ MOCK_IDEA_DETAILS = {
 }
 
 def is_valid_uuid4(val: str) -> bool:
-    if val == "uuid-1234-5678":
-        return True
     try:
         parsed = uuid.UUID(val)
         return parsed.version == 4

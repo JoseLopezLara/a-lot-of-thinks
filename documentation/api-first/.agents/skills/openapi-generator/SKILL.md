@@ -15,6 +15,13 @@ This skill enables the agent to take an API contract (in any format, e.g. JSON, 
 * **OpenAPI Specs**: `openapi/{version}/{domain}/{endpoint_name}.yaml`
 * **Route Handlers**: `routes/{version}/{domain}/{endpoint_name}.py`
 
+### File Naming Convention & Homologation
+* **Exact Matching**: Every requested endpoint documentation file must have the exact same filename across versions, languages, and Python controller files.
+* **Naming Pattern**: The `{endpoint_name}` must follow the pattern: `(http_verb)-(path_segment_name)-...-(path_segment_name)-(param_name)-...` using hyphens and lowercase.
+  * It must always start with the HTTP verb (e.g., `get`, `post`, `put`, `delete`).
+  * It must include all significant path segments and any path parameter IDs.
+  * Example: A route like `GET /ideas/{id}` must be named `get-ideas-id.yaml` (for OpenAPI specs) and `get-ideas-id.py` (for the Python route handler) in all respective version, language, and route directories.
+
 ---
 
 ## Procedure
@@ -27,7 +34,7 @@ Before calling `ask_question`:
 3. Call `ask_question` with the following 5 questions:
    * **Question 1 (API Version)**: Options listing existing versions, and a write-in option for a new version.
    * **Question 2 (Domain)**: Options listing existing domains, and a write-in option for a new domain.
-   * **Question 3 (Endpoint Name)**: A prompt to enter the endpoint filename (e.g., `get-users`).
+   * **Question 3 (Endpoint Name)**: A prompt to enter the endpoint filename (e.g., `get-ideas-id`).
    * **Question 4 (Route Code Generation)**: Options:
      * `Simulated (FastAPI route with mock data)`
      * `Empty (FastAPI route skeleton)`
@@ -61,6 +68,8 @@ Once the user submits the selections:
    * **Parameter Descriptions**: Provide a clear description for every parameter (path, query, header) and schema property.
    * **Schemas**: Move request and response models to the `components/schemas` section to ensure they are reusable and clean.
    * **Examples**: Provide realistic examples for all properties to help documentation users.
+   * **Valid Examples for Concrete Types**: All example values (`example` keyword) in parameters and schema properties must be valid and conform to their declared format/type.
+     * **UUIDs**: If a parameter or schema property uses `format: uuid`, the example MUST be a valid UUID (e.g. `d3b07384-d113-4956-a5db-9c2980fa2a4f`), never an invalid string (like `uuid-1234-5678`). This ensures that clicking "Try out" in Swagger UI generates a valid request out-of-the-box.
    * **No Auth references**: Ensure that the endpoints are designed appropriately. If no security is specified, do not add dummy auth keys.
 
 ### Step 5: Generate Python Route Handler (If requested)
@@ -68,7 +77,7 @@ Once the user submits the selections:
    * Generate a **single** FastAPI Python route handler.
    * Save it to `routes/{version}/{domain}/{endpoint_name}.py` (there is no language folder under `routes/{version}/` to avoid code duplication).
    * Note: The route handler is written in standard Python code. Do NOT add dynamic language-selection logic inside the Python controller handler file itself (to keep the code simple).
-   * For `"simulated"`, implement the FastAPI route to return mock/simulated responses based on the OpenAPI contract.
+   * For `"simulated"`, implement the FastAPI route to return mock/simulated responses based on the OpenAPI contract. Ensure mock database keys and default values in the route handler use the exact same valid concrete types and example values (e.g., the same valid UUID) as the OpenAPI contract, without using custom workarounds or accepting invalid formats.
    * For `"empty"`, implement the FastAPI route with empty functions (using `pass` or basic schema structures) so the user can fill in the logic.
    * Ensure correct inputs, imports, and output structure.
 

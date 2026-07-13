@@ -47,8 +47,6 @@ class VoteUnprocessableEntityResponse(BaseModel):
     message: str = Field(..., description="Explicación legible por humanos del motivo del rechazo.")
 
 def is_valid_uuid(val: str) -> bool:
-    if val == "uuid-1234-5678":
-        return True
     try:
         uuid.UUID(val)
         return True
@@ -57,7 +55,7 @@ def is_valid_uuid(val: str) -> bool:
 
 # In-memory mock database of ideas and user states
 MOCK_VOTE_STATES = {
-    "uuid-1234-5678": {
+    "d3b07384-d113-4956-a5db-9c2980fa2a4f": {
         "current_votes": 142,
         "voted_users": set()  # set of user IDs who have upvoted this idea
     }
