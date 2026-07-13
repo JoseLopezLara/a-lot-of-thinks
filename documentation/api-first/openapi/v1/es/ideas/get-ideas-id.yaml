@@ -1,0 +1,327 @@
+# ==============================================================================
+# DOMAIN: Ideas
+# Description: Details of a specific approved idea by its ID.
+# ==============================================================================
+
+paths:
+  /ideas/{id}:
+    get:
+      tags:
+        - Ideas
+      summary: Recupera la información detallada de una idea aprobada
+      description: |
+        Recupera la información completa y detallada de una idea aprobada específica utilizando su identificador único (UUID).
+        A diferencia del listado general (feed), este endpoint devuelve la tesis original completa redactada por el usuario
+        junto con el análisis profundo y estructurado generado por el Juez IA (`judge_feedback`) y los puntajes de viabilidad.
+
+        **Lambda asociada**: `ideas_low_process_lambda`
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Identificador único global de la idea que se desea consultar (UUID v4).
+          schema:
+            type: string
+            format: uuid
+            example: "uuid-1234-5678"
+      responses:
+        '200':
+          description: Payload absoluto de la idea detallada, segmentando la propuesta original del usuario de la evaluación formal de la inteligencia artificial.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdeaDetailResponse'
+        '400':
+          description: El identificador enviado en la ruta de la URL no cumple con el estándar de formato UUID v4.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdeaDetailBadRequestResponse'
+        '404':
+          description: La petición está bien estructurada, pero el identificador consultado no existe en los registros de ideas aprobadas del sistema.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdeaDetailNotFoundResponse'
+
+components:
+  schemas:
+    IdeaPitch:
+      type: object
+      required:
+        - title
+        - one_liner
+        - problem_statement
+        - solution_mechanics
+      properties:
+        title:
+          type: string
+          description: Nombre o título comercial de la idea.
+          example: "NeonPath"
+        one_liner:
+          type: string
+          description: Descripción corta o gancho comercial de una sola línea.
+          example: "A serverless IDE built directly into Discord channels."
+        problem_statement:
+          type: string
+          description: Declaración detallada del problema o dolor detectado en el mercado.
+          example: "Context switching. Developers lose 30% of their time jumping between IDEs, terminals, and communication apps to debug collaborative issues."
+        solution_mechanics:
+          type: string
+          description: Explicación técnica de cómo la solución resuelve el problema planteado.
+          example: "We use WebContainers to spin up ephemeral Node.js environments inside Discord threads, allowing real-time multiplayer code editing."
+
+    AuthorProfile:
+      type: object
+      required:
+        - name
+        - avatar_url
+      properties:
+        name:
+          type: string
+          description: Nombre público del autor recuperado desde su cuenta de Google.
+          example: "Carlos Rivera"
+        avatar_url:
+          type: string
+          format: uri
+          description: URL absoluta de la fotografía de perfil del autor en Google.
+          example: "https://lh3.googleusercontent.com/a/..."
+
+    IdeaMetrics:
+      type: object
+      required:
+        - votes
+        - time_to_mvp_weeks
+        - team_size
+      properties:
+        votes:
+          type: integer
+          description: Total acumulado de votos positivos recibidos por la comunidad.
+          example: 142
+        time_to_mvp_weeks:
+          type: integer
+          description: Estimación temporal (en semanas) propuesta por el autor para construir la primera versión.
+          example: 4
+        team_size:
+          type: integer
+          description: Cantidad de personas previstas por el autor para ejecutar el MVP.
+          example: 3
+
+    IdeaTaxonomy:
+      type: object
+      required:
+        - domain_category
+        - seeking_roles
+        - monetization_model
+        - extracted_tags
+      properties:
+        domain_category:
+          type: string
+          description: Categoría principal asignada por el LLM.
+          enum:
+            - DevTools
+            - FinTech
+            - HealthTech
+            - EdTech
+            - Marketplace
+            - Productivity SaaS
+            - AI/ML Wrapper
+            - Web3/Crypto
+            - Social/Community
+          example: "DevTools"
+        seeking_roles:
+          type: array
+          items:
+            type: string
+          description: Lista de perfiles de ingeniería o negocio que el autor necesita para el proyecto (ej. backend, frontend, devops).
+          example: ["backend", "devops"]
+        monetization_model:
+          type: string
+          description: Estrategia comercial planteada (ej. b2b_saas, freemium).
+          example: "b2b_saas"
+        extracted_tags:
+          type: array
+          items:
+            type: string
+          description: Palabras clave e integraciones de software específicas identificadas de forma dinámica por la IA.
+          example: ["WebRTC", "Discord Bot", "WebContainers"]
+
+    ViabilityScores:
+      type: object
+      required:
+        - technical_feasibility
+        - cost_efficiency
+        - market_demand
+        - differentiation
+      properties:
+        technical_feasibility:
+          type: integer
+          description: Viabilidad tecnológica contrastada contra limitaciones reales de hardware/APIs.
+          enum: [20, 40, 60, 80, 100]
+          example: 80
+        cost_efficiency:
+          type: integer
+          description: Eficiencia financiera y congruencia del alcance vs. el tamaño de equipo y tiempo propuestos.
+          enum: [20, 40, 60, 80, 100]
+          example: 80
+        market_demand:
+          type: integer
+          description: Nivel de urgencia, dolor y tamaño de mercado direccionable del problema planteado.
+          enum: [20, 40, 60, 80, 100]
+          example: 60
+        differentiation:
+          type: integer
+          description: Grado de innovación y existencia de barreras de entrada (moat) frente a soluciones actuales.
+          enum: [20, 40, 60, 80, 100]
+          example: 60
+
+    CoreStrength:
+      type: object
+      required:
+        - trait
+        - detail
+      properties:
+        trait:
+          type: string
+          description: Área de éxito o ventaja competitiva identificada.
+          example: "Go-to-Market"
+        detail:
+          type: string
+          description: Explicación lógica o justificación detallada de la ventaja competitiva.
+          example: "Adquisición orgánica nativa. Los usuarios ya residen en la plataforma objetivo."
+
+    IdentifiedRisk:
+      type: object
+      required:
+        - risk_type
+        - mitigation
+      properties:
+        risk_type:
+          type: string
+          description: Categoría del peligro o riesgo potencial.
+          example: "Platform Dependency"
+        mitigation:
+          type: string
+          description: Plan de mitigación sugerido por la IA para contrarrestar el riesgo.
+          example: "Diseñar la capa lógica desacoplada de la API de Discord para permitir una futura migración a Slack."
+
+    JudgeFeedback:
+      type: object
+      required:
+        - executive_summary
+        - viability_scores
+        - core_strengths
+        - identified_risks
+      properties:
+        executive_summary:
+          type: string
+          description: Conclusión o veredicto general redactado por el Juez IA que justifica su aprobación.
+          example: "Tesis validada. Capitaliza un dolor de mercado real (Context Switching) utilizando un canal de distribución con alta densidad de desarrolladores."
+        viability_scores:
+          $ref: '#/components/schemas/ViabilityScores'
+        core_strengths:
+          type: array
+          items:
+            $ref: '#/components/schemas/CoreStrength'
+          description: Arreglo de ventajas competitivas detectadas.
+        identified_risks:
+          type: array
+          items:
+            $ref: '#/components/schemas/IdentifiedRisk'
+          description: Arreglo de riesgos potenciales detectados por la IA.
+
+    SocialSharingLinks:
+      type: object
+      required:
+        - x_intent_url
+        - linkedin_share_url
+      properties:
+        x_intent_url:
+          type: string
+          format: uri
+          description: URL de intención preformateada para compartir la idea aprobada en X/Twitter.
+          example: "https://twitter.com/intent/tweet?text=El%20Juez%20IA%20acaba%20de%20aprobar%20mi%20arquitectura...&url=https://dev.midominio.com/idea/uuid-1234-5678"
+        linkedin_share_url:
+          type: string
+          format: uri
+          description: URL de intención preformateada para compartir la idea aprobada en LinkedIn.
+          example: "https://www.linkedin.com/sharing/share-offsite/?url=https://dev.midominio.com/idea/uuid-1234-5678"
+
+    IdeaLinks:
+      type: object
+      required:
+        - discord_thread_url
+        - social_sharing
+      properties:
+        discord_thread_url:
+          type: string
+          format: uri
+          description: URL del canal o hilo creado automáticamente en Discord para iniciar la colaboración del equipo.
+          example: "https://discord.com/channels/123/456"
+        social_sharing:
+          $ref: '#/components/schemas/SocialSharingLinks'
+
+    IdeaDetailResponse:
+      type: object
+      required:
+        - id
+        - pitch
+        - author_profile
+        - metrics
+        - taxonomy
+        - judge_feedback
+        - links
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Identificador único (UUID) de la idea consultada.
+          example: "uuid-1234-5678"
+        pitch:
+          $ref: '#/components/schemas/IdeaPitch'
+        author_profile:
+          $ref: '#/components/schemas/AuthorProfile'
+        metrics:
+          $ref: '#/components/schemas/IdeaMetrics'
+        taxonomy:
+          $ref: '#/components/schemas/IdeaTaxonomy'
+        judge_feedback:
+          $ref: '#/components/schemas/JudgeFeedback'
+        links:
+          $ref: '#/components/schemas/IdeaLinks'
+        created_at:
+          type: string
+          format: date-time
+          description: Marca de tiempo (ISO 8601) de la aprobación del registro.
+          example: "2026-07-07T10:00:00Z"
+
+    IdeaDetailBadRequestResponse:
+      type: object
+      required:
+        - status
+        - message
+      properties:
+        status:
+          type: string
+          description: Identificador de estado indicando un error.
+          example: "error"
+        message:
+          type: string
+          description: Cadena de texto descriptiva detallando la falla de formato en el parámetro de la ruta.
+          example: "The provided ID format is invalid. Must be a valid UUIDv4."
+
+    IdeaDetailNotFoundResponse:
+      type: object
+      required:
+        - status
+        - message
+      properties:
+        status:
+          type: string
+          description: Identificador de estado indicando un error.
+          example: "error"
+        message:
+          type: string
+          description: Cadena de texto que notifica la ausencia del recurso en la base de datos para que el frontend pinte una vista de error 404 personalizada.
+          example: "Idea with the specified ID could not be found."

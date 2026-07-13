@@ -1,0 +1,11 @@
+openapi: 3.0.3
+info:
+  title: "API del Sandbox V1 (Español)"
+  description: "Aplicación FastAPI Sandbox v1 cargada dinámicamente desde archivos OpenAPI YAML agrupados por dominio."
+  version: "1.0.0"
+servers:
+  - url: http://localhost:${API_PORT}/v1/es
+    description: Servidor de desarrollo local para V1 en Español
+paths: {}
+components:
+  schemas: {}

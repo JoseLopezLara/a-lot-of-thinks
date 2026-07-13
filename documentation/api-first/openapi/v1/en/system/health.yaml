@@ -1,0 +1,60 @@
+# ==============================================================================
+# DOMAIN: System
+# Description: System diagnostic and health check endpoints.
+# ==============================================================================
+
+paths:
+  /health:
+    get:
+      tags:
+        - System
+      summary: System diagnostic and health check monitoring
+      description: |
+        Diagnostic and monitoring endpoint designed to validate the general health of the system. It is mainly consumed by CI/CD pipelines (GitHub Actions) to confirm that the deployment was successful or trigger an automatic rollback in case of failure.
+
+        **Associated Lambda**: `system_health_lambda`
+      responses:
+        '200':
+          description: The service is operational and ready to receive traffic.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '500':
+          description: Critical system failure (e.g. syntax error in deployed code, initialization failure in the Lambda function).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthErrorResponse'
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - timestamp
+      properties:
+        status:
+          type: string
+          description: General system status.
+          example: "ok"
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp indicating when the check was performed.
+          example: "2026-07-08T07:05:00Z"
+    HealthErrorResponse:
+      type: object
+      required:
+        - status
+        - message
+      properties:
+        status:
+          type: string
+          description: Status identifier indicating that an error occurred.
+          example: "error"
+        message:
+          type: string
+          description: Descriptive message of the critical server error.
+          example: "Internal server error"

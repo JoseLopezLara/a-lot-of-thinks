@@ -1,0 +1,41 @@
+# ==============================================================================
+# DOMINIO: Ejemplo de Bienvenida
+# Descripción: Este es un ejemplo de bienvenida simple que retorna un mensaje indicando dónde se puede ver la documentación.
+# ==============================================================================
+
+paths:
+  /welcome-example:
+    get:
+      tags:
+        - Ejemplo de Bienvenida
+      summary: Ejemplo de bienvenida
+      description: |
+        Retorna un mensaje de bienvenida indicando dónde se puede ver la documentación interactiva.
+      parameters:
+        - name: client_name
+          in: query
+          required: false
+          description: Tu nombre de cliente o de usuario.
+          schema:
+            type: string
+            example: "Desarrollador"
+      responses:
+        '200':
+          description: El entorno Sandbox está listo. Retornando mensaje de bienvenida.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WelcomeResponse'
+
+components:
+  schemas:
+    WelcomeResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Mensaje de bienvenida que apunta a la documentación interactiva.
+          example: "¡Bienvenido Desarrollador! La configuración del Sandbox fue exitosa. Puedes ver la documentación interactiva de la API en /v1/docs"
+        status:
+          type: string
+          example: "ready"

@@ -100,7 +100,7 @@ def main():
     parser.add_argument("--domain", type=str, help="API domain, e.g., users")
     parser.add_argument("--endpoint", type=str, help="Endpoint filename, e.g., get-users")
     parser.add_argument("--route-type", type=str, choices=["simulated", "empty", "none"], help="Route generation option")
-    parser.add_argument("--language", type=str, choices=["spanish", "english"], help="Language for generated documentation and mocks")
+    parser.add_argument("--language", type=str, help="Language(s) for generated documentation (e.g., spanish,english or es,en)")
     
     args = parser.parse_args()
 
@@ -123,8 +123,21 @@ def main():
         if endpoint.endswith(".yaml") or endpoint.endswith(".yml"):
             endpoint = endpoint.split(".")[0]
         route_type = args.route_type.lower()
-        language = args.language.lower() if args.language else "english"
         
+        # Process languages
+        raw_langs = [l.strip().lower() for l in args.language.split(",")] if args.language else ["english"]
+        lang_mapping = {
+            "spanish": "es", "español": "es", "es": "es",
+            "english": "en", "inglés": "en", "ingles": "en", "en": "en"
+        }
+        selected_langs = []
+        for rl in raw_langs:
+            mapped = lang_mapping.get(rl)
+            if mapped and mapped not in selected_langs:
+                selected_langs.append(mapped)
+        if not selected_langs:
+            selected_langs = ["en"]
+            
         # Ensure version directories exist
         v_openapi_path = os.path.join(openapi_dir, version)
         os.makedirs(v_openapi_path, exist_ok=True)
@@ -154,11 +167,18 @@ def main():
 
         # 2. Domain selection
         existing_domains = []
-        if os.path.exists(v_openapi_path):
-            existing_domains = [
-                d for d in os.listdir(v_openapi_path)
-                if os.path.isdir(os.path.join(v_openapi_path, d))
-            ]
+        # Check subdirectories across language dirs or directly under v_openapi_path
+        search_paths = [v_openapi_path]
+        for l in ("es", "en"):
+            lp = os.path.join(v_openapi_path, l)
+            if os.path.exists(lp) and os.path.isdir(lp):
+                search_paths.append(lp)
+                
+        for path in search_paths:
+            if os.path.exists(path):
+                for d in os.listdir(path):
+                    if os.path.isdir(os.path.join(path, d)) and d not in ("es", "en", "welcome-example", "system") and d not in existing_domains:
+                        existing_domains.append(d)
         existing_domains.sort()
 
         domain_options = existing_domains + ["Create a new domain..."]
@@ -188,17 +208,23 @@ def main():
         # 5. Language
         language_options = [
             "Spanish (Español)",
-            "English (Inglés)"
+            "English (Inglés)",
+            "Both (Ambos)"
         ]
-        lang_idx = select_menu("Select target language for documentation & mocks:", language_options)
-        language = "spanish" if lang_idx == 0 else "english"
+        lang_idx = select_menu("Select target language(s) for documentation:", language_options)
+        if lang_idx == 0:
+            selected_langs = ["es"]
+        elif lang_idx == 1:
+            selected_langs = ["en"]
+        else:
+            selected_langs = ["es", "en"]
 
     result = {
         "version": version,
         "domain": domain,
         "endpoint_name": endpoint,
         "route_type": route_type,
-        "language": language
+        "languages": selected_langs
     }
 
     # Save to a scratch configuration file
@@ -222,7 +248,7 @@ def main():
     print(f"Domain:       {domain}")
     print(f"Endpoint:     {endpoint}")
     print(f"Route Type:   {route_type}")
-    print(f"Language:     {language}")
+    print(f"Languages:    {', '.join(selected_langs)}")
     print(f"Config Saved: {config_path}")
     print("------------------\n")
 

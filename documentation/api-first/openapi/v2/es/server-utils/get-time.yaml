@@ -1,0 +1,37 @@
+# ==============================================================================
+# DOMINIO: Utilidades de Servidor (server-utils)
+# Descripción: Endpoints de utilidad para el servidor, como la obtención de la hora.
+# ==============================================================================
+
+paths:
+  /server-utils/get-time:
+    get:
+      tags:
+        - Utilidades de Servidor
+      summary: Obtener la hora del servidor
+      description: |
+        Retorna la hora actual del servidor en formato ISO 8601 junto con la zona horaria del servidor.
+      responses:
+        '200':
+          description: Hora del servidor obtenida exitosamente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerTimeResponse'
+
+components:
+  schemas:
+    ServerTimeResponse:
+      type: object
+      required:
+        - server_time
+        - timezone
+      properties:
+        server_time:
+          type: string
+          description: La fecha y hora actual del servidor en formato ISO 8601.
+          example: "2026-07-10T20:16:30-06:00"
+        timezone:
+          type: string
+          description: La zona horaria configurada en el servidor.
+          example: "America/Costa_Rica"

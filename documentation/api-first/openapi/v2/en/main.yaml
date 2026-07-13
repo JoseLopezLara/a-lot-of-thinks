@@ -1,0 +1,11 @@
+openapi: 3.0.3
+info:
+  title: "Sandbox API V2 (English)"
+  description: "Sandbox FastAPI v2 application loaded dynamically from domain-grouped OpenAPI YAML files."
+  version: "2.0.0"
+servers:
+  - url: http://localhost:${API_PORT}/v2/en
+    description: Local development server for V2 in English
+paths: {}
+components:
+  schemas: {}

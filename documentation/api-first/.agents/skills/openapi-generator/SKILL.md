@@ -23,7 +23,7 @@ This skill enables the agent to take an API contract (in any format, e.g. JSON, 
 To avoid asking the user multiple questions one-by-one, always present a single `ask_question` call containing all 5 questions at once.
 Before calling `ask_question`:
 1. Find existing API versions by listing directories inside `openapi/` using `list_dir` (e.g. `v1`).
-2. Find existing domains by listing directories inside `openapi/{version}/` using `list_dir` (e.g. `welcome-example`).
+2. Find existing domains by checking subdirectories inside `openapi/{version}/es/` and `openapi/{version}/en/` using `list_dir`.
 3. Call `ask_question` with the following 5 questions:
    * **Question 1 (API Version)**: Options listing existing versions, and a write-in option for a new version.
    * **Question 2 (Domain)**: Options listing existing domains, and a write-in option for a new domain.
@@ -32,15 +32,15 @@ Before calling `ask_question`:
      * `Simulated (FastAPI route with mock data)`
      * `Empty (FastAPI route skeleton)`
      * `None (only OpenAPI YAML spec)`
-   * **Question 5 (Target Language)**: Options:
+   * **Question 5 (Target Language)**: Set `is_multi_select: true` to allow selecting multiple options using checkboxes:
      * `Spanish (Español)`
      * `English (Inglés)`
 
 ### Step 2: Run the Selector Script (Non-Interactive Mode)
 Once the user submits the selections:
 1. Execute the selection script with CLI arguments using the `run_command` tool:
-   `python3 .agents/skills/openapi-generator/scripts/interactive_prompts.py --version {version} --domain {domain} --endpoint {endpoint_name} --route-type {route_type} --language {language}`
-   *Note*: Map the route type to one of `simulated`, `empty`, or `none`, and language to `spanish` or `english`.
+   `python3 .agents/skills/openapi-generator/scripts/interactive_prompts.py --version {version} --domain {domain} --endpoint {endpoint_name} --route-type {route_type} --language {languages}`
+   *Note*: Map the route type to one of `simulated`, `empty`, or `none`, and languages to a comma-separated list of selected languages (e.g., `spanish,english`).
 2. This will silently generate `.agents/skills/openapi-generator/scratch/config.json` without asking the user for any confirmations or inputs.
 
 ### Step 3: Read the Selection Metadata
@@ -49,14 +49,15 @@ Once the user submits the selections:
    - `domain`
    - `endpoint_name`
    - `route_type`
-   - `language`
+   - `languages` (a list of languages, e.g. `["es", "en"]`)
 
 ### Step 4: Generate OpenAPI Specification (.yaml)
 1. Parse the API contract/description provided by the user.
-2. Generate the OpenAPI 3.0.3 specification YAML file.
-3. Save it to `openapi/{version}/{domain}/{endpoint_name}.yaml`.
-4. Follow these best practices:
-   * **Language**: The OpenAPI contract (description, summary, parameter descriptions, schema descriptions, error messages) MUST be written in the language specified in the configuration (`spanish` or `english`). If the input was in another language, translate it to the target language.
+2. For each language in `languages` (e.g., `"es"` and `"en"`):
+   * Generate the OpenAPI 3.0.3 specification YAML file translated into that language (Spanish or English).
+   * Save it to `openapi/{version}/{lang}/{domain}/{endpoint_name}.yaml`.
+3. Follow these best practices:
+   * **Language**: The OpenAPI contract (description, summary, parameter descriptions, schema descriptions, error messages) MUST be written in the target language (`es` or `en`). If the input was in another language, translate it to the target language.
    * **Parameter Descriptions**: Provide a clear description for every parameter (path, query, header) and schema property.
    * **Schemas**: Move request and response models to the `components/schemas` section to ensure they are reusable and clean.
    * **Examples**: Provide realistic examples for all properties to help documentation users.
@@ -64,9 +65,9 @@ Once the user submits the selections:
 
 ### Step 5: Generate Python Route Handler (If requested)
 1. If the `route_type` in the metadata is `"simulated"` or `"empty"`:
-   * Generate the FastAPI Python route handler.
-   * Save it to `routes/{version}/{domain}/{endpoint_name}.py`.
-   * **Language**: Any comments, docstrings, and mock/simulated responses (such as mock names, titles, statuses, or error descriptions) returned by `"simulated"` routes MUST be in the language specified in the configuration (`spanish` or `english`).
+   * Generate a **single** FastAPI Python route handler.
+   * Save it to `routes/{version}/{domain}/{endpoint_name}.py` (there is no language folder under `routes/{version}/` to avoid code duplication).
+   * Note: The route handler is written in standard Python code. Do NOT add dynamic language-selection logic inside the Python controller handler file itself (to keep the code simple).
    * For `"simulated"`, implement the FastAPI route to return mock/simulated responses based on the OpenAPI contract.
    * For `"empty"`, implement the FastAPI route with empty functions (using `pass` or basic schema structures) so the user can fill in the logic.
    * Ensure correct inputs, imports, and output structure.

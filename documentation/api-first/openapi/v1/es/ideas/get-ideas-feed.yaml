@@ -1,0 +1,265 @@
+# ==============================================================================
+# DOMAIN: Ideas
+# Description: Public ideas feed and discovery endpoints.
+# ==============================================================================
+
+paths:
+  /ideas/feed:
+    get:
+      tags:
+        - Ideas
+      summary: Recupera el feed público y paginado de ideas
+      description: |
+        Devuelve el arreglo de tarjetas de ideas (excluyendo el feedback pesado del juez para ahorrar ancho de banda) junto con los enlaces necesarios para interactuar en el frontend y la metadata de paginación.
+
+        **Lambda asociada**: `ideas_low_process_lambda`
+      parameters:
+        - name: q
+          in: query
+          required: false
+          description: Término de búsqueda textual libre (ej. "WebRTC", "Stripe"). El motor de base de datos buscará coincidencias en el título, descripción y etiquetas extraídas.
+          schema:
+            type: string
+            example: "WebRTC"
+        - name: domain
+          in: query
+          required: false
+          description: Filtro estricto por categoría de dominio.
+          schema:
+            type: string
+            enum:
+              - DevTools
+              - FinTech
+              - HealthTech
+              - EdTech
+              - Marketplace
+              - Productivity SaaS
+              - AI/ML Wrapper
+              - Web3/Crypto
+              - Social/Community
+            example: "DevTools"
+        - name: roles
+          in: query
+          required: false
+          description: Filtro por perfiles buscados. Recibe una lista de roles separados por comas (ej. backend,devops).
+          schema:
+            type: string
+            example: "backend,devops"
+        - name: monetization
+          in: query
+          required: false
+          description: Filtro por modelo de negocio propuesto (ej. b2b_saas, open_source, freemium).
+          schema:
+            type: string
+            example: "b2b_saas"
+        - name: sort
+          in: query
+          required: false
+          description: Criterio de ordenamiento de los resultados.
+          schema:
+            type: string
+            enum:
+              - newest
+              - top_voted
+            default: newest
+            example: "newest"
+        - name: limit
+          in: query
+          required: false
+          description: Define la cantidad máxima de resultados por página. Por defecto es 20. Máximo permitido 50.
+          schema:
+            type: integer
+            default: 20
+            maximum: 50
+            example: 20
+        - name: cursor
+          in: query
+          required: false
+          description: Token codificado en base64 utilizado para la paginación secuencial.
+          schema:
+            type: string
+            example: "base64-encoded-cursor-string"
+      responses:
+        '200':
+          description: Consulta realizada con éxito. Devuelve la lista de ideas y metadata de paginación (la lista puede estar vacía si no hay resultados).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdeasFeedResponse'
+        '400':
+          description: Algunos parámetros de la consulta tienen un formato inválido o rompen las reglas de validación.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedBadRequestError'
+
+components:
+  schemas:
+    AuthorProfile:
+      type: object
+      required:
+        - name
+        - avatar_url
+      properties:
+        name:
+          type: string
+          description: Nombre público del autor recuperado desde su cuenta de Google.
+          example: "Carlos Rivera"
+        avatar_url:
+          type: string
+          format: uri
+          description: URL absoluta de la fotografía de perfil del autor en Google.
+          example: "https://lh3.googleusercontent.com/a/..."
+    FeedMetrics:
+      type: object
+      required:
+        - votes
+        - time_to_mvp_weeks
+        - team_size
+      properties:
+        votes:
+          type: integer
+          description: Número entero que representa los votos acumulados por la comunidad.
+          example: 142
+        time_to_mvp_weeks:
+          type: integer
+          description: Número entero con la estimación en semanas para lanzar el Producto Mínimo Viable (MVP).
+          example: 4
+        team_size:
+          type: integer
+          description: Número entero que indica cuántas personas se necesitan para construir el MVP.
+          example: 3
+    FeedTaxonomy:
+      type: object
+      required:
+        - domain_category
+        - seeking_roles
+        - monetization_model
+        - extracted_tags
+      properties:
+        domain_category:
+          type: string
+          description: Categoría principal asignada por el LLM.
+          enum:
+            - DevTools
+            - FinTech
+            - HealthTech
+            - EdTech
+            - Marketplace
+            - Productivity SaaS
+            - AI/ML Wrapper
+            - Web3/Crypto
+            - Social/Community
+          example: "DevTools"
+        seeking_roles:
+          type: array
+          items:
+            type: string
+          description: Arreglo de cadenas de texto detallando los perfiles profesionales que el autor busca reclutar.
+          example: ["backend", "devops"]
+        monetization_model:
+          type: string
+          description: Cadena de texto indicando la estrategia de ingresos propuesta.
+          example: "b2b_saas"
+        extracted_tags:
+          type: array
+          items:
+            type: string
+          description: Arreglo dinámico de palabras clave tecnológicas generadas por la IA para mejorar las búsquedas textuales.
+          example: ["WebRTC", "Discord Bot"]
+    FeedLinks:
+      type: object
+      required:
+        - public_feed_url
+        - discord_thread_url
+      properties:
+        public_feed_url:
+          type: string
+          format: uri
+          description: URL absoluta (permalink) para acceder a la vista detallada de la idea en la web.
+          example: "https://dev.midominio.com/idea/uuid-1234-5678"
+        discord_thread_url:
+          type: string
+          format: uri
+          description: URL absoluta que redirige al usuario directamente al hilo/canal de Discord asociado a esta idea.
+          example: "https://discord.com/channels/123/456"
+    FeedItem:
+      type: object
+      required:
+        - id
+        - title
+        - one_liner
+        - author_profile
+        - metrics
+        - taxonomy
+        - links
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Identificador único (UUID) de la idea.
+          example: "uuid-1234-5678"
+        title:
+          type: string
+          description: Título comercial o nombre de la idea.
+          example: "NeonPath"
+        one_liner:
+          type: string
+          description: Descripción corta o propuesta de valor resumida en una sola frase.
+          example: "A serverless IDE built directly into Discord channels."
+        author_profile:
+          $ref: '#/components/schemas/AuthorProfile'
+        metrics:
+          $ref: '#/components/schemas/FeedMetrics'
+        taxonomy:
+          $ref: '#/components/schemas/FeedTaxonomy'
+        links:
+          $ref: '#/components/schemas/FeedLinks'
+        created_at:
+          type: string
+          format: date-time
+          description: Fecha y hora exacta (ISO 8601) de la creación de la idea.
+          example: "2026-07-07T10:00:00Z"
+    FeedPaginationMetadata:
+      type: object
+      required:
+        - next_cursor
+        - has_more
+      properties:
+        next_cursor:
+          type: string
+          nullable: true
+          description: Cadena codificada en Base64 para solicitar la siguiente página. Null si no hay más resultados.
+          example: "base64-encoded-cursor-string"
+        has_more:
+          type: boolean
+          description: Booleano que confirma si existen más resultados (true) o no (false).
+          example: true
+    IdeasFeedResponse:
+      type: object
+      required:
+        - items
+        - pagination
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeedItem'
+          description: Arreglo que contiene los objetos reducidos de las ideas aprobadas.
+        pagination:
+          $ref: '#/components/schemas/FeedPaginationMetadata'
+    FeedBadRequestError:
+      type: object
+      required:
+        - status
+        - message
+      properties:
+        status:
+          type: string
+          description: Identificador de estado indicando un error.
+          example: "error"
+        message:
+          type: string
+          description: Cadena de texto descriptiva que explica exactamente qué parámetro de la solicitud falló la validación.
+          example: "Invalid pagination limit. Maximum allowed is 50."

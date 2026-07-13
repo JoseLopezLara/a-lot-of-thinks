@@ -1,0 +1,93 @@
+paths:
+  /users/me/quota:
+    get:
+      tags:
+        - Users
+      summary: Recupera el estado actual de las cuotas de gamificación
+      description: |
+        Recupera el estado actual de las cuotas de gamificación del usuario autenticado, 
+        implementando el enfoque "Lazy Reset" (basado en la evaluación de la fecha en curso). 
+        Permite al frontend saber cuántos votos e ideas le quedan disponibles en el día 
+        para actualizar la interfaz antes de que el usuario intente efectuar una acción.
+        
+        **Lambda asociada**: `users_standard_lambda`
+      security:
+        - CognitoAuth: []
+      responses:
+        '200':
+          description: El sistema calculó exitosamente el estado actual de las cuotas para la ventana de 24 horas del usuario.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserQuotaResponse'
+        '401':
+          description: La petición fue rechazada en el borde (API Gateway) debido a que el token es inválido, expiró o no se incluyó en los headers.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+
+components:
+  securitySchemes:
+    CognitoAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT provisto por AWS Cognito.
+  schemas:
+    GamificationQuota:
+      type: object
+      required:
+        - daily_votes_limit
+        - daily_votes_used
+        - daily_votes_remaining
+        - ideas_pitched_today
+        - daily_pitch_limit
+        - next_reset_at
+      properties:
+        daily_votes_limit:
+          type: integer
+          description: Límite duro de votos permitidos por día.
+          example: 5
+        daily_votes_used:
+          type: integer
+          description: Cantidad de votos que el usuario ya emitió en la fecha actual.
+          example: 1
+        daily_votes_remaining:
+          type: integer
+          description: Votos restantes (límite - usados).
+          example: 4
+        ideas_pitched_today:
+          type: integer
+          description: Contador de ideas enviadas al Juez IA en la fecha actual (independientemente de si fueron aprobadas o rechazadas).
+          example: 0
+        daily_pitch_limit:
+          type: integer
+          description: Límite de envíos permitidos por día.
+          example: 1
+        next_reset_at:
+          type: string
+          format: date-time
+          description: Timestamp (ISO 8601) que le indica al frontend el momento exacto (medianoche UTC) en el que la ventana actual expira y los contadores regresan lógicamente a cero.
+          example: "2026-07-09T00:00:00Z"
+    UserQuotaResponse:
+      type: object
+      required:
+        - user_id
+        - gamification
+      properties:
+        user_id:
+          type: string
+          description: Identificador único del usuario extraído del claim del JWT.
+          example: "google-oauth2|123456789"
+        gamification:
+          $ref: '#/components/schemas/GamificationQuota'
+    UnauthorizedError:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          description: Mensaje descriptivo del error de autenticación.
+          example: "Unauthorized"

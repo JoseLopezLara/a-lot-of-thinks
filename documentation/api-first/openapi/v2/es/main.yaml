@@ -1,0 +1,11 @@
+openapi: 3.0.3
+info:
+  title: "API del Sandbox V2 (Español)"
+  description: "Aplicación FastAPI Sandbox v2 cargada dinámicamente desde archivos OpenAPI YAML agrupados por dominio."
+  version: "2.0.0"
+servers:
+  - url: http://localhost:${API_PORT}/v2/es
+    description: Servidor de desarrollo local para V2 en Español
+paths: {}
+components:
+  schemas: {}

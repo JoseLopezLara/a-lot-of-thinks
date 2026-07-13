@@ -1,0 +1,212 @@
+# ==============================================================================
+# DOMAIN: Ideas
+# Description: Procesa la emisión o retiro de un voto para una idea específica.
+# ==============================================================================
+
+paths:
+  /ideas/{id}/vote:
+    post:
+      tags:
+        - Ideas
+      summary: Procesa la emisión o retiro de un voto para una idea específica
+      description: |
+        Procesa la emisión o retiro de un voto para una idea específica.
+        Este endpoint es el de mayor concurrencia de la plataforma e implementa de manera transaccional la lógica de gamificación, asegurando la idempotencia (un usuario no puede votar dos veces por la misma idea) y validando en tiempo real que el usuario no haya excedido su cuota diaria de votos permitidos.
+
+        **Lambda asociada**: `ideas_low_process_lambda`
+      security:
+        - CognitoAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Identificador único global de la idea sobre la cual se desea interactuar.
+          schema:
+            type: string
+            format: uuid
+            example: "uuid-1234-5678"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VoteRequest'
+      responses:
+        '200':
+          description: La transacción se completó con éxito en la base de datos de forma atómica. Devuelve el estado actualizado de la idea y las cuotas restantes del usuario para que el frontend actualice la Interfaz Optimista (Optimistic UI).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoteSuccessResponse'
+        '400':
+          description: El formato de la petición es incorrecto. Esto puede suceder si el UUID de la ruta es inválido o si el campo `action` del body contiene un valor no permitido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoteBadRequestResponse'
+        '401':
+          description: El token provisto es inválido, expiró o no fue enviado en la petición.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '404':
+          description: La idea sobre la cual se intenta votar no existe en la base de datos.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoteNotFoundResponse'
+        '422':
+          description: La petición está bien formada y el usuario está autenticado, pero la transacción fue rechazada debido a una violación de las reglas de negocio (gamificación o estado de los datos).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoteUnprocessableEntityResponse'
+
+components:
+  securitySchemes:
+    CognitoAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT provisto por AWS Cognito.
+  schemas:
+    VoteAction:
+      type: string
+      enum:
+        - upvote
+        - remove
+      description: |
+        Define la operación a realizar:
+        * `upvote`: Añade un voto positivo a la idea y descuenta una unidad de la cuota diaria del usuario.
+        * `remove`: Retira un voto previamente emitido por el usuario en esta idea y le reintegra una unidad a su cuota diaria.
+      example: "upvote"
+
+    VoteRequest:
+      type: object
+      required:
+        - action
+      properties:
+        action:
+          $ref: '#/components/schemas/VoteAction'
+
+    VoteMetrics:
+      type: object
+      required:
+        - new_total_votes
+      properties:
+        new_total_votes:
+          type: integer
+          description: Número entero con la sumatoria global de votos de la idea tras aplicar la transacción.
+          example: 143
+
+    VoteGamification:
+      type: object
+      required:
+        - daily_votes_remaining
+        - resets_in_hours
+      properties:
+        daily_votes_remaining:
+          type: integer
+          description: Número entero indicando cuántos votos le quedan disponibles al usuario el día de hoy.
+          example: 4
+        resets_in_hours:
+          type: integer
+          description: Número entero indicando la cantidad de horas aproximadas restantes hasta que la cuota del usuario vuelva a su límite máximo.
+          example: 16
+
+    VoteSuccessResponse:
+      type: object
+      required:
+        - status
+        - idea_id
+        - action_applied
+        - metrics
+        - gamification
+      properties:
+        status:
+          type: string
+          description: Identificador de éxito.
+          example: "success"
+        idea_id:
+          type: string
+          format: uuid
+          description: El identificador de la idea afectada, útil para confirmación en el estado global del frontend.
+          example: "uuid-1234-5678"
+        action_applied:
+          $ref: '#/components/schemas/VoteAction'
+        metrics:
+          $ref: '#/components/schemas/VoteMetrics'
+        gamification:
+          $ref: '#/components/schemas/VoteGamification'
+
+    VoteBadRequestResponse:
+      type: object
+      required:
+        - status
+        - message
+      properties:
+        status:
+          type: string
+          description: Identificador de estado indicando un error.
+          example: "error"
+        message:
+          type: string
+          description: Cadena de texto explicando que la carga útil (payload) no cumplió con las reglas de validación.
+          example: "Invalid action. Must be 'upvote' or 'remove'."
+
+    UnauthorizedError:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          description: Mensaje descriptivo del error de autenticación.
+          example: "Unauthorized"
+
+    VoteNotFoundResponse:
+      type: object
+      required:
+        - status
+        - message
+      properties:
+        status:
+          type: string
+          description: Identificador de estado indicando un error.
+          example: "error"
+        message:
+          type: string
+          description: Cadena de texto confirmando la ausencia del recurso.
+          example: "Idea with the specified ID could not be found."
+
+    VoteUnprocessableEntityCode:
+      type: string
+      enum:
+        - DAILY_QUOTA_EXCEEDED
+        - ALREADY_VOTED
+        - VOTE_NOT_FOUND
+      description: |
+        Código de error lógico que el frontend puede usar para mapear errores específicos a traducciones o componentes visuales:
+        * `DAILY_QUOTA_EXCEEDED`: El usuario intentó enviar un `upvote` pero ya no tiene votos disponibles para hoy.
+        * `ALREADY_VOTED`: El usuario intentó enviar un `upvote` a una idea por la que ya había votado previamente.
+        * `VOTE_NOT_FOUND`: El usuario intentó enviar un `remove` a una idea por la que nunca había votado.
+      example: "DAILY_QUOTA_EXCEEDED"
+
+    VoteUnprocessableEntityResponse:
+      type: object
+      required:
+        - status
+        - error_code
+        - message
+      properties:
+        status:
+          type: string
+          description: Identificador de estado indicando un error lógico.
+          example: "error"
+        error_code:
+          $ref: '#/components/schemas/VoteUnprocessableEntityCode'
+        message:
+          type: string
+          description: Cadena de texto legible para humanos explicando el motivo exacto del rechazo.
+          example: "Has agotado tu límite de votos diarios. La cuota se reiniciará en 16 horas."

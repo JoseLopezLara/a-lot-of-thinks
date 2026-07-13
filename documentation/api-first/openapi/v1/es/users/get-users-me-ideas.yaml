@@ -1,0 +1,148 @@
+paths:
+  /users/me/ideas:
+    get:
+      tags:
+        - Users
+      summary: Recupera el historial paginado de todas las ideas
+      description: |
+        Recupera el historial paginado de todas las ideas (aprobadas y rechazadas) que el usuario autenticado ha enviado al Juez IA. 
+        Aísla esta consulta del feed público global para mayor eficiencia.
+
+        **Lambda asociada**: `users_standard_lambda`
+      security:
+        - CognitoAuth: []
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          description: Define la cantidad máxima de resultados a devolver. Por defecto es 20. Máximo permitido 50.
+          schema:
+            type: integer
+            default: 20
+            maximum: 50
+            example: 20
+        - name: cursor
+          in: query
+          required: false
+          description: Token codificado en base64 utilizado para la paginación. Indica a la base de datos desde qué registro continuar.
+          schema:
+            type: string
+            example: "base64-encoded-cursor-string"
+      responses:
+        '200':
+          description: Historial paginado de ideas recuperado exitosamente. Retorna la lista de ideas (o vacía si no hay) y la metadata de paginación.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserIdeasResponse'
+        '401':
+          description: El token provisto es inválido, expiró o no existe en la petición.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '404':
+          description: El usuario extraído del token de Cognito no tiene un perfil inicializado en la base de datos.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+
+components:
+  securitySchemes:
+    CognitoAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT provisto por AWS Cognito.
+  schemas:
+    IdeaMetrics:
+      type: object
+      required:
+        - votes
+      properties:
+        votes:
+          type: integer
+          description: Cantidad entera total de votos positivos que la idea ha acumulado.
+          example: 142
+    IdeaItem:
+      type: object
+      required:
+        - id
+        - title
+        - status
+        - metrics
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Identificador único (UUID) de la idea.
+          example: "uuid-1234-5678"
+        title:
+          type: string
+          description: Nombre o título corto asignado a la idea.
+          example: "NeonPath"
+        status:
+          type: string
+          enum: [APPROVED, REJECTED, INVALID_INPUT]
+          description: El estado histórico de la evaluación de la idea. APPROVED (en el feed público), REJECTED (no superó el análisis o colisionó con RAG) o INVALID_INPUT (descartada por ruido).
+          example: "APPROVED"
+        metrics:
+          $ref: '#/components/schemas/IdeaMetrics'
+        created_at:
+          type: string
+          format: date-time
+          description: Fecha y hora exactas en formato ISO 8601 en la que se generó la idea.
+          example: "2026-07-07T10:00:00Z"
+    PaginationMetadata:
+      type: object
+      required:
+        - next_cursor
+        - has_more
+      properties:
+        next_cursor:
+          type: string
+          nullable: true
+          description: Cadena de texto (Base64) que el frontend debe enviar en la siguiente petición para obtener la página subsecuente. Si es null, se alcanzó el final.
+          example: "base64-encoded-cursor-string"
+        has_more:
+          type: boolean
+          description: Valor booleano que indica si existen más páginas de resultados disponibles (true) o no (false).
+          example: true
+    UserIdeasResponse:
+      type: object
+      required:
+        - items
+        - pagination
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/IdeaItem'
+          description: Arreglo que contiene los objetos de las ideas enviadas por el usuario.
+        pagination:
+          $ref: '#/components/schemas/PaginationMetadata'
+    UnauthorizedError:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          description: Mensaje descriptivo del error de autenticación.
+          example: "Unauthorized"
+    NotFoundError:
+      type: object
+      required:
+        - status
+        - message
+      properties:
+        status:
+          type: string
+          description: Identificador de estado indicando que ocurrió un error (error).
+          example: "error"
+        message:
+          type: string
+          description: Cadena de texto explicando que no se encontró el recurso padre (el registro del usuario) en la base de datos.
+          example: "User profile not found."
