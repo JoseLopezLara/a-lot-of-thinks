@@ -1,0 +1,481 @@
+# ==============================================================================
+# DOMAIN: Ideas
+# Description: Central endpoint to propose and evaluate a business idea.
+# ==============================================================================
+
+paths:
+  /ideas/pitch:
+    post:
+      tags:
+        - Ideas
+      summary: Submit and evaluate a new business idea proposal
+      description: |
+        Central endpoint of the system and the one with the highest processing consumption (Heavy Compute).
+        Receives the user's idea proposal and orchestrates the AI evaluation flow:
+        first through a router model to filter noise (semantic validation), followed by a query to the vector database (Pinecone) to detect collisions or plagiarism, and finally a deep evaluation by the AI Judge.
+        Consumes one unit of the user's daily idea pitch quota.
+
+        **Associated Lambda**: `ideas_heavy_process_lambda`
+      security:
+        - CognitoAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PitchRequest'
+      responses:
+        '200':
+          description: |
+            The evaluation was processed successfully. Returns a polymorphic JSON body based on the `evaluation_status` attribute to represent the three possible business scenarios (INVALID_INPUT, REJECTED, APPROVED).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/InvalidInputResponse'
+                  - $ref: '#/components/schemas/RejectedResponse'
+                  - $ref: '#/components/schemas/ApprovedResponse'
+                discriminator:
+                  propertyName: evaluation_status
+                  mapping:
+                    INVALID_INPUT: '#/components/schemas/InvalidInputResponse'
+                    REJECTED: '#/components/schemas/RejectedResponse'
+                    APPROVED: '#/components/schemas/ApprovedResponse'
+        '400':
+          description: The request format is incorrect or missing required fields.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequestError'
+        '401':
+          description: The provided token is invalid, expired, or was not sent.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '422':
+          description: The user attempted to submit an idea, but has already exhausted the maximum allowed submission limit (pitch quota) for their 24-hour window.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuotaExceededError'
+
+components:
+  securitySchemes:
+    CognitoAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT provided by AWS Cognito.
+  schemas:
+    PitchRequest:
+      type: object
+      required:
+        - title
+        - one_liner
+        - problem_statement
+        - solution_mechanics
+        - monetization_model
+        - team_size
+        - time_to_mvp_weeks
+        - seeking_roles
+      properties:
+        title:
+          type: string
+          description: Proposed commercial name for the idea.
+          example: "NeonPath"
+        one_liner:
+          type: string
+          description: Value proposition or commercial hook in a single line.
+          example: "A serverless IDE built directly into Discord channels."
+        problem_statement:
+          type: string
+          description: Detailed explanation of the market pain or technical problem being solved.
+          example: "Context switching. Developers lose 30% of their time jumping between IDEs, terminals, and communication apps."
+        solution_mechanics:
+          type: string
+          description: Architectural or mechanical description of how the proposed solution works.
+          example: "We use WebContainers to spin up ephemeral Node.js environments inside Discord threads."
+        monetization_model:
+          type: string
+          description: Suggested revenue strategy (e.g. `b2b_saas`, `freemium`, `open_source`).
+          example: "b2b_saas"
+        team_size:
+          type: integer
+          description: Estimated number of people required to build the first version.
+          example: 3
+        time_to_mvp_weeks:
+          type: integer
+          description: Estimated time in weeks to have a Minimum Viable Product.
+          example: 4
+        seeking_roles:
+          type: array
+          items:
+            type: string
+          description: Roles the user is looking to recruit for the team.
+          example: ["backend", "devops"]
+
+    InvalidInputResponse:
+      type: object
+      required:
+        - evaluation_status
+        - judge_feedback
+        - data
+      properties:
+        evaluation_status:
+          type: string
+          enum:
+            - INVALID_INPUT
+          description: Evaluation status identifier.
+          example: "INVALID_INPUT"
+        judge_feedback:
+          type: object
+          required:
+            - reason_code
+            - message
+          properties:
+            reason_code:
+              type: string
+              enum:
+                - EMPTY_OR_GIBBERISH
+                - NON_BUSINESS_PROMPT
+                - LACKS_PROBLEM_DEFINITION
+                - LACKS_SOLUTION_MECHANICS
+                - OUT_OF_SCOPE_PHYSICAL
+                - OTHER_INVALID
+              description: Category explaining the early routing invalidation.
+              example: "LACKS_SOLUTION_MECHANICS"
+            message:
+              type: string
+              description: Friendly message generated by the AI explaining the reason for discarding.
+              example: "The input describes a valid problem, but lacks an evaluable solution mechanics."
+        data:
+          type: object
+          nullable: true
+          description: No additional information is generated in this scenario.
+          example: null
+
+    CriticalFlaw:
+      type: object
+      required:
+        - category
+        - severity
+        - issue
+      properties:
+        category:
+          type: string
+          description: Area of the flaw (e.g., "Architecture", "FinOps").
+          example: "Architecture"
+        severity:
+          type: string
+          enum:
+            - HIGH
+            - MEDIUM
+            - LOW
+          description: Severity level of the detected flaw.
+          example: "HIGH"
+        issue:
+          type: string
+          description: Detailed description of the error or limitation.
+          example: "WebContainers cannot run inside an uncontrolled embedded environment."
+
+    RagCollision:
+      type: object
+      required:
+        - id
+        - title
+        - similarity
+        - public_feed_url
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier of the colliding idea in Pinecone.
+          example: "d3b07384-d113-4956-a5db-9c2980fa2a4f"
+        title:
+          type: string
+          description: Title of the similar idea.
+          example: "DiscordIDE"
+        similarity:
+          type: number
+          description: Calculated cosine similarity level (> 0.95).
+          example: 0.96
+        public_feed_url:
+          type: string
+          format: uri
+          description: Permanent link to view the colliding idea.
+          example: "https://dev.midominio.com/idea/d3b07384-d113-4956-a5db-9c2980fa2a4f"
+
+    RejectedResponse:
+      type: object
+      required:
+        - evaluation_status
+        - judge_feedback
+        - data
+      properties:
+        evaluation_status:
+          type: string
+          enum:
+            - REJECTED
+          description: Evaluation status identifier.
+          example: "REJECTED"
+        judge_feedback:
+          type: object
+          required:
+            - reason_code
+            - executive_summary
+            - critical_flaws
+            - pivot_suggestions
+          properties:
+            reason_code:
+              type: string
+              enum:
+                - EXACT_RAG_COLLISION
+                - MARKET_SATURATION
+                - OTHER_COLLISION
+                - TECHNICAL_IMPOSSIBILITY
+                - RESOURCE_MISMATCH
+                - FINANCIAL_UNVIABILITY
+                - TOS_VIOLATION
+                - OTHER_VIABILITY_REJECTION
+              description: Category of the deep rejection reason.
+              example: "TECHNICAL_IMPOSSIBILITY"
+            executive_summary:
+              type: string
+              description: Executive summary of the rejection generated by the LLM.
+              example: "The proposed architecture assumes capabilities that current Discord APIs restrict due to CORS policies."
+            critical_flaws:
+              type: array
+              items:
+                $ref: '#/components/schemas/CriticalFlaw'
+              description: Specific flaws found in the thesis.
+            pivot_suggestions:
+              type: array
+              items:
+                type: string
+              description: Suggestions for the user to pivot their idea towards something viable.
+              example:
+                - "Develop a Discord bot that acts as a CLI towards an external container environment (AWS ECS)."
+        data:
+          type: object
+          required:
+            - rag_collisions
+          properties:
+            rag_collisions:
+              type: array
+              items:
+                $ref: '#/components/schemas/RagCollision'
+              description: Ideas with high vector similarity found in Pinecone.
+
+    ViabilityScores:
+      type: object
+      required:
+        - technical_feasibility
+        - cost_efficiency
+        - market_demand
+        - differentiation
+      properties:
+        technical_feasibility:
+          type: integer
+          description: Technical feasibility score (1-100).
+          enum: [20, 40, 60, 80, 100]
+          example: 80
+        cost_efficiency:
+          type: integer
+          description: Balance score between resources, time, and scope.
+          enum: [20, 40, 60, 80, 100]
+          example: 80
+        market_demand:
+          type: integer
+          description: Urgency and existence score of market pain.
+          enum: [20, 40, 60, 80, 100]
+          example: 60
+        differentiation:
+          type: integer
+          description: Innovation and entry barrier score of the idea.
+          enum: [20, 40, 60, 80, 100]
+          example: 60
+
+    CoreStrength:
+      type: object
+      required:
+        - trait
+        - detail
+      properties:
+        trait:
+          type: string
+          description: Name of the highlighted strength.
+          example: "Go-to-Market"
+        detail:
+          type: string
+          description: Explanation of the strength.
+          example: "Organic native acquisition. Users already reside on the target platform."
+
+    IdentifiedRisk:
+      type: object
+      required:
+        - risk_type
+        - mitigation
+      properties:
+        risk_type:
+          type: string
+          description: Type of identified risk.
+          example: "Platform Dependency"
+        mitigation:
+          type: string
+          description: Proposed mitigation strategy.
+          example: "Design the logic layer decoupled from the Discord API."
+
+    ApprovedTaxonomy:
+      type: object
+      required:
+        - domain_category
+        - extracted_tags
+      properties:
+        domain_category:
+          type: string
+          description: Category of the domain the idea belongs to.
+          enum:
+            - DevTools
+            - FinTech
+            - HealthTech
+            - EdTech
+            - Marketplace
+            - Productivity SaaS
+            - AI/ML Wrapper
+            - Web3/Crypto
+            - Social/Community
+          example: "DevTools"
+        extracted_tags:
+          type: array
+          items:
+            type: string
+          description: Extracted technology tags.
+          example: ["WebRTC", "WebContainers", "Discord Bot"]
+
+    ApprovedLinks:
+      type: object
+      required:
+        - public_feed_url
+        - discord_thread_url
+        - social_sharing
+      properties:
+        public_feed_url:
+          type: string
+          format: uri
+          description: Permanent public URL of the idea in the platform feed.
+          example: "https://dev.midominio.com/idea/d3b07384-d113-4956-a5db-9c2980fa2a4f"
+        discord_thread_url:
+          type: string
+          format: uri
+          description: URL of the dynamically created Discord channel.
+          example: "https://discord.com/channels/123/456"
+        social_sharing:
+          type: object
+          required:
+            - x_intent_url
+            - linkedin_share_url
+          properties:
+            x_intent_url:
+              type: string
+              format: uri
+              description: Preformatted link to share on X.
+              example: "https://twitter.com/intent/tweet?text=..."
+            linkedin_share_url:
+              type: string
+              format: uri
+              description: Preformatted link to share on LinkedIn.
+              example: "https://www.linkedin.com/sharing/share-offsite/?url=..."
+
+    ApprovedResponse:
+      type: object
+      required:
+        - evaluation_status
+        - judge_feedback
+        - data
+      properties:
+        evaluation_status:
+          type: string
+          enum:
+            - APPROVED
+          description: Evaluation status identifier.
+          example: "APPROVED"
+        judge_feedback:
+          type: object
+          required:
+            - executive_summary
+            - viability_scores
+            - core_strengths
+            - identified_risks
+          properties:
+            executive_summary:
+              type: string
+              description: Friendly general verdict from the AI Judge.
+              example: "Validated thesis. Capitalizes on a real market pain..."
+            viability_scores:
+              $ref: '#/components/schemas/ViabilityScores'
+            core_strengths:
+              type: array
+              items:
+                $ref: '#/components/schemas/CoreStrength'
+              description: Key strengths identified in the project.
+            identified_risks:
+              type: array
+              items:
+                $ref: '#/components/schemas/IdentifiedRisk'
+              description: Identified risks and mitigation plans.
+        data:
+          type: object
+          required:
+            - taxonomy
+            - links
+          properties:
+            taxonomy:
+              $ref: '#/components/schemas/ApprovedTaxonomy'
+            links:
+              $ref: '#/components/schemas/ApprovedLinks'
+
+    BadRequestError:
+      type: object
+      required:
+        - status
+        - message
+      properties:
+        status:
+          type: string
+          description: Error identifier.
+          example: "error"
+        message:
+          type: string
+          description: Error message detailing the failed schema validation.
+          example: "Field 'solution_mechanics' is required."
+
+    UnauthorizedError:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          description: Authentication error message.
+          example: "Unauthorized"
+
+    QuotaExceededError:
+      type: object
+      required:
+        - status
+        - error_code
+        - message
+      properties:
+        status:
+          type: string
+          description: Logical error identifier.
+          example: "error"
+        error_code:
+          type: string
+          description: Code identifying the quota error.
+          example: "DAILY_PITCH_QUOTA_EXCEEDED"
+        message:
+          type: string
+          description: Descriptive message for the user.
+          example: "You have exceeded the allowed daily pitch limit. Try again tomorrow."
